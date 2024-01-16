@@ -75,9 +75,9 @@ resource "aws_security_group" "sg" {
 
   # EFS
   ingress {
-    from_port = 2049
-    to_port   = 2049
-    protocol  = "tcp"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
     cidr_blocks = [data.aws_subnet.public.cidr_block]
   }
 
