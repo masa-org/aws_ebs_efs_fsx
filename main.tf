@@ -115,7 +115,7 @@ resource "local_sensitive_file" "foo" {
   file_permission = "0400"
 }
 
-####################### EC2 ########################
+######### EC2 ########################
 
 resource "aws_instance" "instance1" {
   ami                         = data.aws_ami.ubuntu.id
@@ -182,7 +182,7 @@ EOF
 }
 
 
-####################### EBS ########################
+################ EBS ########################
 
 resource "aws_ebs_volume" "example" {
   availability_zone = "${var.region}a"
@@ -209,9 +209,7 @@ resource "aws_volume_attachment" "ebs_att2" {
   instance_id = aws_instance.instance2.id
 }
 
-####################### EFS ########################
-
-data "aws_availability_zones" "available" {}
+################ EFS ########################
 
 resource "aws_efs_file_system" "efs" {
   creation_token = "my-product"
