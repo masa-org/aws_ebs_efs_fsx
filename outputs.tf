@@ -20,3 +20,12 @@ ssh -i ${local.private_key_filename}.pem ubuntu@${aws_instance.instance2.public_
 
 EOF
 }
+
+output "fsx_mount" {
+  value = <<EOF
+
+To  mount FSx volume:
+sudo mount -t lustre -o relatime,flock ${aws_fsx_lustre_file_system.fsx.dns_name}@tcp:/${aws_fsx_lustre_file_system.fsx.mount_name} /fsx
+
+EOF
+}

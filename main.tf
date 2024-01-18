@@ -81,6 +81,15 @@ resource "aws_security_group" "sg" {
     cidr_blocks = [data.aws_subnet.public.cidr_block]
   }
 
+  # FSx
+  ingress {
+    from_port   = 988
+    to_port     = 988
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_subnet.public.cidr_block]
+  }
+
+
   egress {
     from_port       = 0
     to_port         = 0
@@ -130,12 +139,14 @@ resource "aws_instance" "instance1" {
   }
 
   depends_on = [
-    aws_efs_mount_target.efs-mt
+    aws_efs_mount_target.efs-mt,
+    aws_fsx_lustre_file_system.fsx 
   ]
 
   user_data = <<EOF
 #!/bin/bash
 
+# EFS client
 sudo apt-get update
 sudo apt-get -y install git binutils
 git clone https://github.com/aws/efs-utils
@@ -145,6 +156,14 @@ sudo apt-get -y install ./build/amazon-efs-utils*deb
 
 sudo mkdir -p /efs
 sudo mount -t efs -o tls ${aws_efs_file_system.efs.id}:/ /efs
+
+# FSx client
+wget -O - https://fsx-lustre-client-repo-public-keys.s3.amazonaws.com/fsx-ubuntu-public-key.asc | gpg --dearmor | sudo tee /usr/share/keyrings/fsx-ubuntu-public-key.gpg >/dev/null
+sudo bash -c 'echo "deb [signed-by=/usr/share/keyrings/fsx-ubuntu-public-key.gpg] https://fsx-lustre-client-repo.s3.amazonaws.com/ubuntu bionic main" > /etc/apt/sources.list.d/fsxlustreclientrepo.list && apt-get update'
+sudo apt install -y lustre-client-modules-$(uname -r)
+
+sudo mkdir -p /fsx
+sudo mount -t lustre -o relatime,flock ${aws_fsx_lustre_file_system.fsx.dns_name}@tcp:/${aws_fsx_lustre_file_system.fsx.mount_name} /fsx
 EOF
 
 }
@@ -162,12 +181,14 @@ resource "aws_instance" "instance2" {
   }
 
   depends_on = [
-    aws_efs_mount_target.efs-mt
+    aws_efs_mount_target.efs-mt, 
+    aws_fsx_lustre_file_system.fsx
   ]
 
   user_data = <<EOF
 #!/bin/bash
 
+# EFS client
 sudo apt-get update
 sudo apt-get -y install git binutils
 git clone https://github.com/aws/efs-utils
@@ -177,6 +198,14 @@ sudo apt-get -y install ./build/amazon-efs-utils*deb
 
 sudo mkdir -p /efs
 sudo mount -t efs -o tls ${aws_efs_file_system.efs.id}:/ /efs
+
+# FSx client
+wget -O - https://fsx-lustre-client-repo-public-keys.s3.amazonaws.com/fsx-ubuntu-public-key.asc | gpg --dearmor | sudo tee /usr/share/keyrings/fsx-ubuntu-public-key.gpg >/dev/null
+sudo bash -c 'echo "deb [signed-by=/usr/share/keyrings/fsx-ubuntu-public-key.gpg] https://fsx-lustre-client-repo.s3.amazonaws.com/ubuntu bionic main" > /etc/apt/sources.list.d/fsxlustreclientrepo.list && apt-get update'
+sudo apt install -y lustre-client-modules-$(uname -r)
+
+sudo mkdir -p /fsx
+sudo mount -t lustre -o relatime,flock ${aws_fsx_lustre_file_system.fsx.dns_name}@tcp:/${aws_fsx_lustre_file_system.fsx.mount_name} /fsx
 EOF
 
 }
@@ -224,4 +253,15 @@ resource "aws_efs_mount_target" "efs-mt" {
   file_system_id  = aws_efs_file_system.efs.id
   subnet_id       = data.aws_subnet.public.id
   security_groups = [aws_security_group.sg.id]
+}
+
+############# FSx ###########################
+
+resource "aws_fsx_lustre_file_system" "fsx" {
+  storage_capacity            = 1200
+  deployment_type             = "PERSISTENT_1"
+  storage_type                = "SSD"
+  per_unit_storage_throughput = 50
+  subnet_ids                  = [data.aws_subnet.public.id]
+  security_group_ids          = [aws_security_group.sg.id]
 }
