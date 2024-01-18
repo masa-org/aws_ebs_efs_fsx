@@ -1,4 +1,4 @@
-# ebs_multi_attach
+# aws_ebs_efs_fsx
 
 ## How to run
 
